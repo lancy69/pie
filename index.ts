@@ -109,7 +109,7 @@ export default function plan(pi: ExtensionAPI): void {
 					if (!custom?.trim()) return { content: [{ type: "text", text: "The user cancelled the questions." }], details: { answers } };
 					answers[question.id] = custom.trim();
 				} else {
-					answers[question.id] = question.options[choices.indexOf(choice)]?.label ?? choice;
+					answers[question.id] = question.options[choices.indexOf(choice)]!.label;
 				}
 			}
 			return { content: [{ type: "text", text: JSON.stringify({ answers }) }], details: { answers } };

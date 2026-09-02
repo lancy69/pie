@@ -65,7 +65,7 @@ export default function plan(pi: ExtensionAPI): void {
 
 	const persist = () => pi.appendEntry<PlanState>(STATE_TYPE, { enabled, toolsBeforePlanMode });
 
-	function setEnabled(next: boolean, ctx: ExtensionContext, save = true): void {
+	function setEnabled(next: boolean, ctx: ExtensionContext): void {
 		if (next === enabled) return;
 		if (next) {
 			toolsBeforePlanMode = pi.getActiveTools().filter((name) => name !== QUESTION_TOOL);
@@ -79,7 +79,7 @@ export default function plan(pi: ExtensionAPI): void {
 		}
 		enabled = next;
 		setStatus(ctx);
-		if (save) persist();
+		persist();
 		ctx.ui.notify(`Plan mode ${enabled ? "on" : "off"}.`, "info");
 	}
 

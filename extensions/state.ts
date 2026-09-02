@@ -6,6 +6,7 @@ export interface GoalState {
 	objective: string;
 	status: GoalStatus;
 	checkpoint?: string;
+	blockedTurns?: number;
 	createdAt: number;
 	updatedAt: number;
 }
@@ -20,7 +21,14 @@ export function updateGoal(
 	checkpoint?: string,
 	now = Date.now(),
 ): GoalState {
-	return { ...goal, status, checkpoint: checkpoint?.trim() || goal.checkpoint, updatedAt: now };
+	const blockedTurns = status === "blocked" ? (goal.blockedTurns ?? 0) + 1 : undefined;
+	return {
+		...goal,
+		status: status === "blocked" && (blockedTurns ?? 0) < 3 ? "active" : status,
+		checkpoint: checkpoint?.trim() || goal.checkpoint,
+		blockedTurns,
+		updatedAt: now,
+	};
 }
 
 export function restoreGoal(entries: readonly unknown[]): GoalState | undefined {

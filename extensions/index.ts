@@ -90,8 +90,13 @@ export default function goalMode(pi: ExtensionAPI): void {
 				return { content: [{ type: "text", text: "The goal is paused." }], details: { goal } };
 			}
 
-			setGoal(updateGoal(goal, params.status, params.checkpoint), ctx);
-			return { content: [{ type: "text", text: formatGoal(goal) }], details: { goal } };
+			const next = updateGoal(goal, params.status, params.checkpoint);
+			setGoal(next, ctx);
+			const text =
+				params.status === "blocked" && next.status === "active"
+					? `Blocker recorded (${next.blockedTurns}/3). Keep trying safe alternatives.`
+					: formatGoal(next);
+			return { content: [{ type: "text", text }], details: { goal: next } };
 		},
 	});
 
@@ -105,7 +110,7 @@ export default function goalMode(pi: ExtensionAPI): void {
 
 Objective: ${goal.objective}
 ${goal.checkpoint ? `Latest checkpoint: ${goal.checkpoint}\n` : ""}
-Keep working independently toward this one objective across turns. Make scoped progress and verify it with relevant commands or artifacts. Use update_goal with status active after a meaningful checkpoint. Use complete only when the objective is fully achieved and verified. Use blocked only when progress genuinely requires user input or an external state change. Do not stop because the work is difficult or incomplete.`,
+Keep working independently toward this one objective across turns. Make scoped progress and verify it with relevant commands or artifacts. Use update_goal with status active after a meaningful checkpoint. Use complete only when the objective is fully achieved and verified. Report blocked only when the same genuine blocker prevents progress for three consecutive turns; earlier blocked reports keep the goal active so you can exhaust safe alternatives. Do not stop because the work is difficult or incomplete.`,
 				display: false,
 			},
 		};

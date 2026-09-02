@@ -23,3 +23,14 @@ test("a cleared goal restores as absent", () => {
 		undefined,
 	);
 });
+
+test("requires a blocker to recur across three turns", () => {
+	const first = updateGoal(createGoal("Ship it", 1), "blocked", "Waiting for access", 2);
+	const second = updateGoal(first, "blocked", "Still waiting for access", 3);
+	const third = updateGoal(second, "blocked", "Access is still unavailable", 4);
+
+	assert.equal(first.status, "active");
+	assert.equal(second.status, "active");
+	assert.equal(third.status, "blocked");
+	assert.equal(updateGoal(second, "active", "Found another path", 4).blockedTurns, undefined);
+});

@@ -1,5 +1,5 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
+import { type Static, Type } from "typebox";
 
 const STATE_TYPE = "pi-plan-state";
 const QUESTION_TOOL = "request_user_input";
@@ -37,6 +37,7 @@ const RequestUserInput = Type.Object({
 });
 
 type PlanState = { enabled: boolean; toolsBeforePlanMode?: string[] };
+type PlanningQuestion = Static<typeof Question>;
 
 export function extractProposedPlan(text: string): string | undefined {
 	return text.match(/<proposed_plan>\s*([\s\S]*?)\s*<\/proposed_plan>/i)?.[1]?.trim() || undefined;
@@ -54,6 +55,22 @@ function lastAssistantText(messages: unknown[]): string {
 		)
 		.map((part) => part.text)
 		.join("\n");
+}
+
+function restorePlanState(entries: readonly unknown[]): PlanState {
+	const entry = [...entries].reverse().find((value) =>
+		typeof value === "object" && value !== null && "type" in value && value.type === "custom" &&
+		"customType" in value && value.customType === STATE_TYPE
+	) as { data?: PlanState } | undefined;
+	return entry?.data ?? { enabled: false };
+}
+
+async function askQuestion(ctx: ExtensionContext, question: PlanningQuestion): Promise<string | undefined> {
+	const choices = question.options.map((option) => `${option.label} — ${option.description}`);
+	const choice = await ctx.ui.select(`${question.header}\n${question.question}`, [...choices, "Other"]);
+	if (!choice) return;
+	if (choice === "Other") return (await ctx.ui.input(question.question))?.trim() || undefined;
+	return question.options[choices.indexOf(choice)]!.label;
 }
 
 export default function plan(pi: ExtensionAPI): void {
@@ -101,16 +118,9 @@ export default function plan(pi: ExtensionAPI): void {
 			}
 			const answers: Record<string, string> = {};
 			for (const question of params.questions) {
-				const choices = question.options.map((option) => `${option.label} — ${option.description}`);
-				const choice = await ctx.ui.select(`${question.header}\n${question.question}`, [...choices, "Other"]);
-				if (!choice) return { content: [{ type: "text", text: "The user cancelled the questions." }], details: { answers } };
-				if (choice === "Other") {
-					const custom = await ctx.ui.input(question.question);
-					if (!custom?.trim()) return { content: [{ type: "text", text: "The user cancelled the questions." }], details: { answers } };
-					answers[question.id] = custom.trim();
-				} else {
-					answers[question.id] = question.options[choices.indexOf(choice)]!.label;
-				}
+				const answer = await askQuestion(ctx, question);
+				if (!answer) return { content: [{ type: "text", text: "The user cancelled the questions." }], details: { answers } };
+				answers[question.id] = answer;
 			}
 			return { content: [{ type: "text", text: JSON.stringify({ answers }) }], details: { answers } };
 		},
@@ -130,11 +140,9 @@ export default function plan(pi: ExtensionAPI): void {
 	});
 
 	pi.on("session_start", (_event, ctx) => {
-		const state = ctx.sessionManager.getEntries()
-			.filter((entry) => entry.type === "custom" && entry.customType === STATE_TYPE)
-			.pop() as { data?: PlanState } | undefined;
-		toolsBeforePlanMode = state?.data?.toolsBeforePlanMode;
-		enabled = state?.data?.enabled ?? false;
+		const state = restorePlanState(ctx.sessionManager.getEntries());
+		toolsBeforePlanMode = state.toolsBeforePlanMode;
+		enabled = state.enabled;
 		if (pi.getFlag("plan") === true) enabled = true;
 		if (enabled) {
 			const original = toolsBeforePlanMode ?? pi.getActiveTools().filter((name) => name !== QUESTION_TOOL);

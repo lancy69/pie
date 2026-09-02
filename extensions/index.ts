@@ -111,6 +111,19 @@ Keep working independently toward this one objective across turns. Make scoped p
 		};
 	});
 
+	pi.on("agent_settled", (_event, ctx) => {
+		if (goal?.status !== "active" || !ctx.isIdle() || ctx.hasPendingMessages()) return;
+
+		pi.sendMessage(
+			{
+				customType: "goal-continuation",
+				content: "Continue working toward the active goal from the latest verified checkpoint.",
+				display: false,
+			},
+			{ triggerTurn: true, deliverAs: "nextTurn" },
+		);
+	});
+
 	pi.on("session_start", (_event, ctx) => {
 		goal = restoreGoal(ctx.sessionManager.getEntries());
 		updateStatus(ctx);

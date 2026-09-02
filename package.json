@@ -10,6 +10,11 @@
 	"files": [
 		"extensions"
 	],
+	"pi": {
+		"extensions": [
+			"./extensions/index.ts"
+		]
+	},
 	"scripts": {
 		"check": "npm run typecheck && npm test",
 		"test": "node --test",

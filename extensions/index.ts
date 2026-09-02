@@ -125,7 +125,7 @@ Keep working independently toward this one objective across turns. Make scoped p
 	});
 
 	pi.on("session_start", (_event, ctx) => {
-		goal = restoreGoal(ctx.sessionManager.getEntries());
+		goal = restoreGoal(ctx.sessionManager.getBranch());
 		updateStatus(ctx);
 	});
 

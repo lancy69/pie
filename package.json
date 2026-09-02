@@ -8,7 +8,8 @@
 		"pi-package"
 	],
 	"files": [
-		"extensions"
+		"extensions/index.ts",
+		"extensions/state.ts"
 	],
 	"pi": {
 		"extensions": [

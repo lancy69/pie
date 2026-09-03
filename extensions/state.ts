@@ -15,17 +15,30 @@ export function createGoal(objective: string, now = Date.now()): GoalState {
 	return { objective: objective.trim(), status: "active", createdAt: now, updatedAt: now };
 }
 
+function nextBlockedTurns(goal: GoalState, status: GoalStatus): number | undefined {
+	if (status !== "blocked") return undefined;
+	return (goal.blockedTurns ?? 0) + 1;
+}
+
+function nextStatus(status: GoalStatus, blockedTurns: number | undefined): GoalStatus {
+	return status === "blocked" && (blockedTurns ?? 0) < 3 ? "active" : status;
+}
+
+function nextCheckpoint(goal: GoalState, checkpoint: string | undefined): string | undefined {
+	return checkpoint?.trim() || goal.checkpoint;
+}
+
 export function updateGoal(
 	goal: GoalState,
 	status: GoalStatus,
 	checkpoint?: string,
 	now = Date.now(),
 ): GoalState {
-	const blockedTurns = status === "blocked" ? (goal.blockedTurns ?? 0) + 1 : undefined;
+	const blockedTurns = nextBlockedTurns(goal, status);
 	return {
 		...goal,
-		status: status === "blocked" && (blockedTurns ?? 0) < 3 ? "active" : status,
-		checkpoint: checkpoint?.trim() || goal.checkpoint,
+		status: nextStatus(status, blockedTurns),
+		checkpoint: nextCheckpoint(goal, checkpoint),
 		blockedTurns,
 		updatedAt: now,
 	};

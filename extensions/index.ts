@@ -24,56 +24,64 @@ export default function goalMode(pi: ExtensionAPI): void {
 		updateStatus(ctx);
 	}
 
+	function showGoal(ctx: ExtensionContext): void {
+		ctx.ui.notify(goal ? formatGoal(goal) : "No goal is set.", "info");
+	}
+
+	function clearGoal(ctx: ExtensionContext): void {
+		setGoal(undefined, ctx);
+		ctx.ui.notify("Goal cleared.", "info");
+	}
+
+	function pauseGoal(ctx: ExtensionContext): void {
+		if (!goal || goal.status !== "active") {
+			ctx.ui.notify("There is no active goal to pause.", "warning");
+			return;
+		}
+		setGoal(updateGoal(goal, "paused"), ctx);
+		ctx.ui.notify("Goal paused.", "info");
+	}
+
+	function resumeGoal(ctx: ExtensionContext): void {
+		if (!goal || !["paused", "blocked"].includes(goal.status)) {
+			ctx.ui.notify("There is no paused or blocked goal to resume.", "warning");
+			return;
+		}
+		setGoal(updateGoal(goal, "active"), ctx);
+		ctx.ui.notify("Goal resumed.", "info");
+		pi.sendMessage(
+			{ customType: "goal-resume", content: "Continue working toward the active goal.", display: false },
+			{ triggerTurn: true },
+		);
+	}
+
+	function startGoal(objective: string, ctx: ExtensionContext): void {
+		if (goal && ["active", "paused"].includes(goal.status)) {
+			ctx.ui.notify("Finish or clear the current goal before starting another.", "warning");
+			return;
+		}
+		setGoal(createGoal(objective), ctx);
+		pi.sendMessage(
+			{ customType: "goal-start", content: "Start working toward the active goal.", display: false },
+			{ triggerTurn: true },
+		);
+	}
+
+	const controls = new Map<string, (ctx: ExtensionContext) => void>([
+		["clear", clearGoal],
+		["pause", pauseGoal],
+		["resume", resumeGoal],
+	]);
+
 	pi.registerCommand("goal", {
 		description: "Start, inspect, pause, resume, or clear a goal",
 		handler: async (args, ctx) => {
 			const input = args.trim();
 
-			if (!input) {
-				ctx.ui.notify(goal ? formatGoal(goal) : "No goal is set.", "info");
-				return;
-			}
-
-			if (input === "clear") {
-				setGoal(undefined, ctx);
-				ctx.ui.notify("Goal cleared.", "info");
-				return;
-			}
-
-			if (input === "pause") {
-				if (!goal || goal.status !== "active") {
-					ctx.ui.notify("There is no active goal to pause.", "warning");
-					return;
-				}
-				setGoal(updateGoal(goal, "paused"), ctx);
-				ctx.ui.notify("Goal paused.", "info");
-				return;
-			}
-
-			if (input === "resume") {
-				if (!goal || (goal.status !== "paused" && goal.status !== "blocked")) {
-					ctx.ui.notify("There is no paused or blocked goal to resume.", "warning");
-					return;
-				}
-				setGoal(updateGoal(goal, "active"), ctx);
-				ctx.ui.notify("Goal resumed.", "info");
-				pi.sendMessage(
-					{ customType: "goal-resume", content: "Continue working toward the active goal.", display: false },
-					{ triggerTurn: true },
-				);
-				return;
-			}
-
-			if (goal?.status === "active" || goal?.status === "paused") {
-				ctx.ui.notify("Finish or clear the current goal before starting another.", "warning");
-				return;
-			}
-
-			setGoal(createGoal(input), ctx);
-			pi.sendMessage(
-				{ customType: "goal-start", content: "Start working toward the active goal.", display: false },
-				{ triggerTurn: true },
-			);
+			if (!input) return showGoal(ctx);
+			const control = controls.get(input);
+			if (control) return control(ctx);
+			startGoal(input, ctx);
 		},
 	});
 

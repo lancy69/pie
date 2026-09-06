@@ -1,5 +1,5 @@
 {
-  "name": "pi-questions",
+  "name": "@lancy69/pi-questions",
   "version": "0.1.0",
   "description": "Ask questions using Pi's native dialogs",
   "type": "module",

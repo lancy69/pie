@@ -6,7 +6,11 @@ A small Pi extension that provides `ask_questions` using Pi's native selection a
 
 Requires Pi 0.84.4 or later and Node.js 22.19.0 or later. Tested with Pi 0.84.4.
 
-From this directory:
+```sh
+pi install npm:@lancy69/pi-questions
+```
+
+To install from a local checkout instead:
 
 ```sh
 npm install

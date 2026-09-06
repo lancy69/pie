@@ -166,7 +166,7 @@ test("rejects duplicate labels and ambiguous display text before prompting", asy
 test("Escape from custom input returns to the same question and allows another choice", async () => {
   for (const [selections, inputs, answer, kinds] of [
     [[other, "B"], [undefined], "B", ["select", "input", "select"]],
-    [[other, other], [undefined, " ", " custom "], "custom", ["select", "input", "select", "input", "input"]],
+    [[other, other], [undefined, " custom "], "custom", ["select", "input", "select", "input"]],
   ] as const) {
     const env = setup({ selections: [...selections], inputs: ["Ada", ...inputs] });
     const result = await env.run([name, pick]);
@@ -187,4 +187,21 @@ test("aborting custom input never returns to the menu", async () => {
     answers: [{ id: "name", answer: "Ada" }], cancelled: true,
   });
   assert.deepEqual(env.calls.map(call => call.kind), ["input", "select", "input"]);
+});
+
+
+test("empty custom submissions are answers and advance to the next question", async () => {
+  for (const input of ["", "   "]) {
+    const env = setup({ selections: [other], inputs: [input, "Ada"] });
+    const result = await env.run([pick, name]);
+    assert.deepEqual(result.details, {
+      answers: [{ id: "pick", answer: "" }, { id: "name", answer: "Ada" }], cancelled: false,
+    });
+    assert.deepEqual(result.content, [{ type: "text", text: JSON.stringify(result.details) }]);
+    assert.deepEqual(env.calls.map(call => call.kind), ["select", "input", "input"]);
+  }
+  const cancelled = setup({ selections: [other], inputs: ["", undefined] });
+  assert.deepEqual((await cancelled.run([pick, name])).details, {
+    answers: [{ id: "pick", answer: "" }], cancelled: true,
+  });
 });

@@ -49,7 +49,7 @@ export default function questions(pi: ExtensionAPI) {
           (description?.trim() ? ctx.ui.theme.fg("dim", ` ${description.trim()}`) : "")) ?? [];
         const other = `Other${ctx.ui.theme.fg("dim", " Type your own answer")}`;
         let answer: string | undefined;
-        while (!answer && !signal?.aborted) {
+        while (answer === undefined && !signal?.aborted) {
           if (choices.length) {
             const choice = await ctx.ui.select(title, [...choices, other], { signal });
             if (signal?.aborted || choice === undefined) break;
@@ -58,16 +58,16 @@ export default function questions(pi: ExtensionAPI) {
               break;
             }
           }
-          while (!answer && !signal?.aborted) {
+          while (answer === undefined && !signal?.aborted) {
             const input = choices.length
               ? await inputCustomAnswer(ctx, title, signal)
               : await ctx.ui.input(title, undefined, { signal });
             if (signal?.aborted || input === undefined) break;
-            answer = input.trim();
+            answer = choices.length ? input.trim() : input.trim() || undefined;
           }
           if (!choices.length) break;
         }
-        if (!answer || signal?.aborted) break;
+        if (answer === undefined || signal?.aborted) break;
         answers.push({ id, answer });
       }
       const details = { answers, cancelled: answers.length !== questions.length };

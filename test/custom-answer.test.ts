@@ -8,7 +8,7 @@ import { inputCustomAnswer } from "../src/custom-answer.ts";
 initTheme("dark");
 
 test("custom input renders the return hint and handles submission, Escape, and abort", async () => {
-  for (const action of ["submit", "escape", "abort", "already aborted"]) {
+  for (const action of ["submit", "empty submit", "escape", "abort", "already aborted"]) {
     const controller = new AbortController();
     if (action === "already aborted") controller.abort();
     let component!: Component & Focusable & { dispose(): void };
@@ -32,11 +32,11 @@ test("custom input renders the return hint and handles submission, Escape, and a
     assert.doesNotMatch(rendered, /cancel/);
     component.focused = true;
     assert.equal(component.focused, true);
-    component.handleInput?.("hello");
-    if (action === "submit") component.handleInput?.("\r");
+    if (action !== "empty submit") component.handleInput?.("hello");
+    if (action === "submit" || action === "empty submit") component.handleInput?.("\r");
     if (action === "escape") component.handleInput?.("\u001b");
     if (action === "abort") controller.abort();
-    assert.equal(await result, action === "submit" ? "hello" : undefined);
+    assert.equal(await result, action === "submit" ? "hello" : action === "empty submit" ? "" : undefined);
     component.dispose();
   }
 });

@@ -47,7 +47,7 @@ Ask Pi to use `ask_questions` when you want it to collect choices or written ans
 - Provide at least one question, with unique nonblank IDs and nonblank question text.
 - Options are optional. Omitted or empty options open text input directly.
 - Choice questions allow one selection and automatically include **Other**, which opens text input.
-- Each option is an object with a `label` and optional `description` (replacing the earlier string format). Descriptions appear as `label — description`; only the label is returned. Descriptions are trimmed, and blank descriptions are omitted.
+- Each option is an object with a `label` and optional `description` (replacing the earlier string format). Descriptions appear as `label — description`, with the description and separator in Pi's dim theme color; only the label is returned. Descriptions are trimmed, and blank descriptions are omitted.
 - Display text must be unique so each selection maps to exactly one label.
 - Option labels are trimmed and must be nonblank and unique. **Other** is reserved.
 - Typed answers are trimmed; blank submissions prompt again.

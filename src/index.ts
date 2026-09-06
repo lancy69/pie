@@ -44,7 +44,8 @@ export default function questions(pi: ExtensionAPI) {
       for (const [index, { id, question, options }] of questions.entries()) {
         if (signal?.aborted) break;
         const title = `${index + 1}/${questions.length}: ${question}`;
-        const choices = options?.map(formatChoice) ?? [];
+        const choices = options?.map(({ label, description }) => label.trim() +
+          (description?.trim() ? ctx.ui.theme.fg("dim", ` — ${description.trim()}`) : "")) ?? [];
         let answer: string | undefined;
         if (choices.length) {
           const choice = await ctx.ui.select(title, [...choices, "Other"], { signal });

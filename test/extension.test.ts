@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { stripVTControlCharacters } from "node:util";
 import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Value } from "typebox/value";
 import extension from "../src/index.ts";
@@ -22,10 +23,15 @@ function setup({ inputs = [], selections = [], hasUI = true, onDialog }: {
   const ctx = {
     hasUI,
     ui: {
+      theme: { fg: (color: string, text: string) => {
+        assert.equal(color, "dim");
+        return `\u001b[90m${text}\u001b[39m`;
+      } },
       async select(title: string, options: string[], opts?: { signal?: AbortSignal }) {
         calls.push({ kind: "select", title, options, signal: opts?.signal });
         onDialog?.();
-        return selections.shift();
+        const selected = selections.shift();
+        return options.find(option => stripVTControlCharacters(option) === selected);
       },
       async input(title: string, _placeholder?: string, opts?: { signal?: AbortSignal }) {
         calls.push({ kind: "input", title, signal: opts?.signal });
@@ -135,7 +141,7 @@ test("displays optional descriptions but returns only the selected label", async
       answers: [{ id: "pick", answer }], cancelled: false,
     });
     assert.deepEqual(env.calls[0].options, [
-      "TypeScript — Static types — editor support", "JavaScript", "Other language", "Other",
+      "TypeScript\u001b[90m — Static types — editor support\u001b[39m", "JavaScript", "Other language", "Other",
     ]);
     assert.equal(env.calls.length, selection === "Other" ? 2 : 1);
   }

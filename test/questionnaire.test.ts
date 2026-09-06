@@ -18,7 +18,7 @@ const down = "\u001b[B";
 const enter = "\r";
 const escape = "\u001b";
 
-function setup(questions = [text, choice], signal?: AbortSignal) {
+function setup(questions = [text, choice], signal?: AbortSignal, onRender?: () => void) {
   let tool!: ToolDefinition;
   let component!: Component & Focusable & { dispose(): void };
   let mounts = 0;
@@ -34,7 +34,7 @@ function setup(questions = [text, choice], signal?: AbortSignal) {
       custom(factory: Parameters<ExtensionUIContext["custom"]>[0]) {
         mounts++;
         return new Promise(resolve => {
-          component = factory({ requestRender: () => { renders++; } } as unknown as TUI,
+          component = factory({ requestRender: () => { renders++; onRender?.(); } } as unknown as TUI,
             { fg: (color: string, value: string) => color === "dim" ? `\u001b[90m${value}\u001b[39m` : value } as Theme,
             getKeybindings() as KeybindingsManager,
             value => { completions++; resolve(value); }) as typeof component;
@@ -158,5 +158,17 @@ test("resize and focus continue working after changing pages", async () => {
   }
   env.press(escape, escape);
   await env.result;
+  env.component.dispose();
+});
+
+
+test("abort during initial rendering closes the mounted session without accepting input", async () => {
+  const controller = new AbortController();
+  const env = setup([text], controller.signal, () => controller.abort());
+  env.press("late", enter);
+  assert.deepEqual((await env.result).details, { answers: [], cancelled: true });
+  assert.equal(env.mounts, 1);
+  assert.equal(env.completions, 1);
+  assert.equal(getEventListeners(controller.signal, "abort").length, 0);
   env.component.dispose();
 });

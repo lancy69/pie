@@ -4,8 +4,8 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Container, Input, Spacer, Text, type Component, type Focusable } from "@earendil-works/pi-tui";
 
-type Question = { id: string; question: string; options?: { label: string; description?: string }[] };
-type Answer = { id: string; answer: string };
+import { displayChoice, otherOption, type Answer, type Question } from "./questions.ts";
+
 type Page = Component & Partial<Focusable> & { dispose?(): void };
 
 export async function askQuestionnaire(ctx: ExtensionContext, questions: Question[], signal?: AbortSignal): Promise<Answer[]> {
@@ -30,7 +30,6 @@ export async function askQuestionnaire(ctx: ExtensionContext, questions: Questio
       tui.requestRender();
     }
     function submit(answer: string) {
-      if (finished || signal?.aborted) return;
       answers.push({ id: questions[answers.length].id, answer: answer.trim() });
       if (answers.length === questions.length) finish();
       else showQuestion();
@@ -38,13 +37,12 @@ export async function askQuestionnaire(ctx: ExtensionContext, questions: Questio
     function showQuestion() {
       const { question, options } = questions[answers.length];
       const title = `${answers.length + 1}/${questions.length}: ${question}`;
-      if (!options?.length) {
+      if (!options.length) {
         show(createInput(title, "cancel", theme, keybindings, submit, finish));
         return;
       }
-      const choices = options.map(({ label, description }) => label.trim() +
-        (description?.trim() ? theme.fg("dim", ` ${description.trim()}`) : ""));
-      const other = `Other${theme.fg("dim", " Type your own answer")}`;
+      const choices = options.map(option => displayChoice(option, theme));
+      const other = displayChoice(otherOption, theme);
       const selector = new ExtensionSelectorComponent(title, [...choices, other], choice => {
         if (choice === other) {
           show(createInput(title, "return to selection menu", theme, keybindings, submit, () => show(selector)));

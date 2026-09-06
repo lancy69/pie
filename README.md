@@ -22,7 +22,7 @@ Reload an existing Pi session with `/reload`, or start a new session.
 To try it without installing the package:
 
 ```sh
-pi -e ./src/index.ts
+pi -e ./index.ts
 ```
 
 Ask Pi to use `ask_questions` when you want it to collect choices or written answers.
@@ -81,7 +81,7 @@ The extension uses Pi's default tool rendering. It has no navigation to earlier 
 
 ## Development
 
-The entrypoint is `src/index.ts`; Pi loads TypeScript directly without a build step.
+The entrypoint is `index.ts`; Pi loads TypeScript directly without a build step.
 
 ```sh
 npm install

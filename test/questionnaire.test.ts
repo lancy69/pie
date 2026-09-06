@@ -7,7 +7,7 @@ import {
   type KeybindingsManager, type Theme, type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import { CURSOR_MARKER, getKeybindings, type Component, type Focusable, type TUI } from "@earendil-works/pi-tui";
-import extension from "../src/index.ts";
+import extension from "../index.ts";
 
 initTheme("dark");
 const text = { id: "text", question: "Your name?" };

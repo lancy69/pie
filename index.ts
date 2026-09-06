@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { askQuestionnaire } from "./questionnaire.ts";
+import { askQuestionnaire } from "./src/questionnaire.ts";
 
 function formatChoice(option: { label: string; description?: string }): string {
   return [option.label.trim(), option.description?.trim()].filter(Boolean).join(" ");

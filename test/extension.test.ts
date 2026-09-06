@@ -3,7 +3,7 @@ import test from "node:test";
 import { stripVTControlCharacters } from "node:util";
 import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Value } from "typebox/value";
-import extension from "../src/index.ts";
+import extension from "../index.ts";
 
 type Question = { id: string; question: string; options?: { label: string; description?: string }[] };
 const other = "Other Type your own answer";

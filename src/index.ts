@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { inputCustomAnswer } from "./custom-answer.ts";
 
 function formatChoice(option: { label: string; description?: string }): string {
   return [option.label.trim(), option.description?.trim()].filter(Boolean).join(" ");
@@ -58,7 +59,9 @@ export default function questions(pi: ExtensionAPI) {
             }
           }
           while (!answer && !signal?.aborted) {
-            const input = await ctx.ui.input(title, undefined, { signal });
+            const input = choices.length
+              ? await inputCustomAnswer(ctx, title, signal)
+              : await ctx.ui.input(title, undefined, { signal });
             if (signal?.aborted || input === undefined) break;
             answer = input.trim();
           }

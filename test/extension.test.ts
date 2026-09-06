@@ -23,6 +23,7 @@ function setup({ inputs = [], selections = [], hasUI = true, onDialog }: {
   extension({ registerTool: (value: ToolDefinition) => { tool = value; } } as ExtensionAPI);
   const calls: { kind: string; title: string; options?: string[]; signal?: AbortSignal }[] = [];
   const ctx = {
+    mode: "rpc",
     hasUI,
     ui: {
       theme: { fg: (color: string, text: string) => {

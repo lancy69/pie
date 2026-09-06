@@ -69,6 +69,8 @@ The tool returns the same JSON in its text content and structured `details`:
 
 Use the dialog's navigation keys and Enter to select or submit. Escape from an Other text input returns to the same question’s selection menu. Escape from the selection menu or a text-only question cancels the remaining questionnaire. Completed answers are preserved and `cancelled` is `true`; unanswered questions are absent from `answers`.
 
+In Pi's terminal UI, the Other input footer labels the configured Escape/cancel keys as **return to selection menu**. This page uses Pi's native TUI components. RPC clients retain their own input dialog and footer.
+
 Execution aborts also stop further prompts and discard an unfinished answer. Pi controls delivery of an aborted tool result. Calls without an interactive UI fail with an explicit error.
 
 The extension uses Pi's default tool rendering. It has no navigation to earlier questions, embedded custom input, multi-select, or saved questionnaire state.

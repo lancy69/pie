@@ -50,7 +50,7 @@ Ask Pi to use `ask_questions` when you want it to collect choices or written ans
 - Each option is an object with a `label` and optional `description` (replacing the earlier string format). Descriptions appear as `label description`, with the description in Pi's dim theme color; only the label is returned. Descriptions are trimmed, and blank descriptions are omitted.
 - Display text must be unique so each selection maps to exactly one label.
 - Option labels are trimmed and must be nonblank and unique. **Other** is reserved.
-- Typed answers are trimmed. Enter on an empty or whitespace-only Other input submits an empty answer (`""`) and advances to the next question. Blank submissions on text-only questions prompt again.
+- Typed answers are trimmed. Enter on any empty or whitespace-only input submits an empty answer (`""`) and advances to the next question.
 - All questions are validated before any dialog opens. IDs are returned as supplied; IDs differing only in surrounding whitespace are rejected as duplicates.
 
 ## Tool result

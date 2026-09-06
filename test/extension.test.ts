@@ -60,12 +60,12 @@ test("registers the final sequential tool and validates its parameter shape", ()
   }
 });
 
-test("trims text and retries blanks with the same progress title", async () => {
-  const env = setup({ inputs: ["  ", "  Ada  "] });
+test("trims text and shows the progress title", async () => {
+  const env = setup({ inputs: ["  Ada  "] });
   const result = await env.run();
   assert.deepEqual(result.details, { answers: [{ id: "name", answer: "Ada" }], cancelled: false });
   assert.deepEqual(result.content, [{ type: "text", text: JSON.stringify(result.details) }]);
-  assert.deepEqual(env.calls.map(c => c.title), ["1/1: Your name?", "1/1: Your name?"]);
+  assert.deepEqual(env.calls.map(c => c.title), ["1/1: Your name?"]);
 });
 
 test("sequences choices, Other, and text with mapped IDs and progress", async () => {
@@ -204,4 +204,19 @@ test("empty custom submissions are answers and advance to the next question", as
   assert.deepEqual((await cancelled.run([pick, name])).details, {
     answers: [{ id: "pick", answer: "" }], cancelled: true,
   });
+});
+
+
+test("text-only questions accept empty answers with omitted or empty options", async () => {
+  for (const options of [undefined, []]) {
+    for (const input of ["", "   "]) {
+      const env = setup({ inputs: [input, "Ada"] });
+      const result = await env.run([{ id: "empty", question: "Anything else?", options }, name]);
+      assert.deepEqual(result.details, {
+        answers: [{ id: "empty", answer: "" }, { id: "name", answer: "Ada" }], cancelled: false,
+      });
+      assert.deepEqual(result.content, [{ type: "text", text: JSON.stringify(result.details) }]);
+      assert.deepEqual(env.calls.map(call => call.kind), ["input", "input"]);
+    }
+  }
 });

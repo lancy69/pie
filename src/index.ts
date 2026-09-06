@@ -63,7 +63,7 @@ export default function questions(pi: ExtensionAPI) {
               ? await inputCustomAnswer(ctx, title, signal)
               : await ctx.ui.input(title, undefined, { signal });
             if (signal?.aborted || input === undefined) break;
-            answer = choices.length ? input.trim() : input.trim() || undefined;
+            answer = input.trim();
           }
           if (!choices.length) break;
         }

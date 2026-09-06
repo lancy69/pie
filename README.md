@@ -1,6 +1,6 @@
 # pi-questions
 
-A small Pi extension that provides `ask_questions` using Pi's native selection and text-input dialogs. Questions appear one at a time with progress labels.
+A small Pi extension that provides `ask_questions` using Pi's native selection and text-input components. Questions appear one at a time with progress labels inside one persistent terminal UI session, without restoring the normal editor between questions.
 
 ## Install
 
@@ -73,7 +73,7 @@ The tool returns the same JSON in its text content and structured `details`:
 
 Use the dialog's navigation keys and Enter to select or submit. Escape from an Other text input returns to the same question’s selection menu. Escape from the selection menu or a text-only question cancels the remaining questionnaire. Completed answers are preserved and `cancelled` is `true`; unanswered questions are absent from `answers`.
 
-In Pi's terminal UI, the Other input footer labels the configured Escape/cancel keys as **return to selection menu**. This page uses Pi's native TUI components. RPC clients retain their own input dialog and footer.
+In Pi's terminal UI, the Other input footer labels the configured Escape/cancel keys as **return to selection menu**. Returning keeps Other highlighted. Selection and input pages share the same mounted questionnaire; their heights can still differ. RPC clients retain their own sequential dialogs and footers.
 
 Execution aborts also stop further prompts and discard an unfinished answer. Pi controls delivery of an aborted tool result. Calls without an interactive UI fail with an explicit error.
 
@@ -89,4 +89,4 @@ npm run check
 npm test
 ```
 
-Tests use Node's built-in runner and mocked Pi dialogs to cover validation, sequencing, choices, text input, cancellation, and aborts.
+Tests use Node's built-in runner, native TUI components, and mocked RPC dialogs to cover validation, persistent question transitions, choices, text input, cancellation, aborts, resizing, and focus.

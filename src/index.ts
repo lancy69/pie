@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { inputCustomAnswer } from "./custom-answer.ts";
+import { askQuestionnaire } from "./questionnaire.ts";
 
 function formatChoice(option: { label: string; description?: string }): string {
   return [option.label.trim(), option.description?.trim()].filter(Boolean).join(" ");
@@ -41,6 +41,13 @@ export default function questions(pi: ExtensionAPI) {
       }
       if (!ctx.hasUI) throw new Error("ask_questions requires an interactive UI.");
 
+      if (ctx.mode === "tui") {
+        const answers = await askQuestionnaire(ctx, questions, signal);
+        const details = { answers, cancelled: answers.length !== questions.length };
+        return { content: [{ type: "text", text: JSON.stringify(details) }], details };
+      }
+
+      // RPC clients own their dialogs; keep their sequential UI requests.
       const answers: { id: string; answer: string }[] = [];
       for (const [index, { id, question, options }] of questions.entries()) {
         if (signal?.aborted) break;
@@ -59,9 +66,7 @@ export default function questions(pi: ExtensionAPI) {
             }
           }
           while (answer === undefined && !signal?.aborted) {
-            const input = choices.length
-              ? await inputCustomAnswer(ctx, title, signal)
-              : await ctx.ui.input(title, undefined, { signal });
+            const input = await ctx.ui.input(title, undefined, { signal });
             if (signal?.aborted || input === undefined) break;
             answer = input.trim();
           }

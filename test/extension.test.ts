@@ -4,9 +4,9 @@ import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@earendil-w
 import { Value } from "typebox/value";
 import extension from "../src/index.ts";
 
-type Question = { id: string; question: string; options?: string[] };
+type Question = { id: string; question: string; options?: { label: string; description?: string }[] };
 const name: Question = { id: "name", question: "Your name?" };
-const pick: Question = { id: "pick", question: "Pick one", options: [" A ", "B"] };
+const pick: Question = { id: "pick", question: "Pick one", options: [{ label: " A " }, { label: "B" }] };
 
 function setup({ inputs = [], selections = [], hasUI = true, onDialog }: {
   inputs?: (string | undefined)[];
@@ -44,7 +44,9 @@ test("registers the final sequential tool and validates its parameter shape", ()
   assert.equal(tool.executionMode, "sequential");
   assert.equal(Value.Check(tool.parameters, { questions: [name, pick] }), true);
   for (const params of [{}, { question: "old interface" }, { questions: [] },
-    { questions: [{ question: "Missing ID" }] }, { questions: [{ ...name, options: [123] }] }]) {
+    { questions: [{ question: "Missing ID" }] }, { questions: [{ ...name, options: [123] }] },
+    { questions: [{ ...name, options: ["old string"] }] },
+    { questions: [{ ...name, options: [{ label: "A", description: 123 }] }] }]) {
     assert.equal(Value.Check(tool.parameters, params), false);
   }
 });
@@ -76,7 +78,7 @@ test("validates every question before prompting", async () => {
   const invalid: Question[][] = [[], [name, { ...name }], [{ ...name, id: " " }],
     [name, { ...name, id: " name " }], [{ ...name, question: " \n " }]];
   for (const options of [[" "], ["A", " A "], ["Other"], [" Other "]]) {
-    invalid.push([name, { ...pick, options }]);
+    invalid.push([name, { ...pick, options: options.map(label => ({ label })) }]);
   }
   for (const questions of invalid) {
     const env = setup();
@@ -113,5 +115,39 @@ test("abort preserves prior answers, dismisses dialogs, and prevents later promp
     const stopped = setup();
     assert.deepEqual((await stopped.run([name], controller.signal)).details, { answers: [], cancelled: true });
     assert.equal(stopped.calls.length, 0);
+  }
+});
+
+
+test("displays optional descriptions but returns only the selected label", async () => {
+  const described: Question = { ...pick, options: [
+    { label: " TypeScript ", description: " Static types — editor support " },
+    { label: "JavaScript" },
+    { label: "Other language", description: "   " },
+  ] };
+  for (const [selection, answer] of [
+    ["TypeScript — Static types — editor support", "TypeScript"],
+    ["JavaScript", "JavaScript"], ["Other language", "Other language"], ["Other", "Rust"],
+  ]) {
+    const env = setup({ selections: [selection], inputs: ["Rust"] });
+    assert.equal(Value.Check(env.tool.parameters, { questions: [described] }), true);
+    assert.deepEqual((await env.run([described])).details, {
+      answers: [{ id: "pick", answer }], cancelled: false,
+    });
+    assert.deepEqual(env.calls[0].options, [
+      "TypeScript — Static types — editor support", "JavaScript", "Other language", "Other",
+    ]);
+    assert.equal(env.calls.length, selection === "Other" ? 2 : 1);
+  }
+});
+
+test("rejects duplicate labels and ambiguous display text before prompting", async () => {
+  for (const options of [
+    [{ label: "A", description: "first" }, { label: "A", description: "second" }],
+    [{ label: "A", description: "B" }, { label: "A — B" }],
+  ]) {
+    const env = setup();
+    await assert.rejects(env.run([name, { ...pick, options }]), /Options must/);
+    assert.equal(env.calls.length, 0);
   }
 });

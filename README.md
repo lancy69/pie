@@ -46,7 +46,7 @@ Ask Pi to use `ask_questions` when you want it to collect choices or written ans
 
 - Provide at least one question, with unique nonblank IDs and nonblank question text.
 - Options are optional. Omitted or empty options open text input directly.
-- Choice questions allow one selection and automatically include **Other**, which opens text input.
+- Choice questions allow one selection and automatically include **Other** with a dimmed **Type your own answer** hint, which opens text input.
 - Each option is an object with a `label` and optional `description` (replacing the earlier string format). Descriptions appear as `label description`, with the description in Pi's dim theme color; only the label is returned. Descriptions are trimmed, and blank descriptions are omitted.
 - Display text must be unique so each selection maps to exactly one label.
 - Option labels are trimmed and must be nonblank and unique. **Other** is reserved.
@@ -67,11 +67,11 @@ The tool returns the same JSON in its text content and structured `details`:
 }
 ```
 
-Use the dialog's navigation keys and Enter to select or submit. Escape cancels the remaining questionnaire, including when entering an Other answer. Completed answers are preserved and `cancelled` is `true`; unanswered questions are absent from `answers`.
+Use the dialog's navigation keys and Enter to select or submit. Escape from an Other text input returns to the same question’s selection menu. Escape from the selection menu or a text-only question cancels the remaining questionnaire. Completed answers are preserved and `cancelled` is `true`; unanswered questions are absent from `answers`.
 
 Execution aborts also stop further prompts and discard an unfinished answer. Pi controls delivery of an aborted tool result. Calls without an interactive UI fail with an explicit error.
 
-The extension uses Pi's default tool rendering. It has no back navigation, multi-select, or saved questionnaire state.
+The extension uses Pi's default tool rendering. It has no navigation to earlier questions, embedded custom input, multi-select, or saved questionnaire state.
 
 ## Development
 

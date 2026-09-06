@@ -34,7 +34,7 @@ export default function questions(pi: ExtensionAPI) {
         if (choices.some(option => !option || option === "Other") || new Set(choices).size !== choices.length) {
           throw new Error("Options must be nonblank, unique, and must not use the reserved label Other.");
         }
-        if (new Set(options?.map(formatChoice)).size !== choices.length) {
+        if (new Set([...(options?.map(formatChoice) ?? []), "Other Type your own answer"]).size !== choices.length + 1) {
           throw new Error("Options must have unique display text.");
         }
       }
@@ -46,16 +46,23 @@ export default function questions(pi: ExtensionAPI) {
         const title = `${index + 1}/${questions.length}: ${question}`;
         const choices = options?.map(({ label, description }) => label.trim() +
           (description?.trim() ? ctx.ui.theme.fg("dim", ` ${description.trim()}`) : "")) ?? [];
+        const other = `Other${ctx.ui.theme.fg("dim", " Type your own answer")}`;
         let answer: string | undefined;
-        if (choices.length) {
-          const choice = await ctx.ui.select(title, [...choices, "Other"], { signal });
-          if (signal?.aborted || choice === undefined) break;
-          if (choice !== "Other") answer = options![choices.indexOf(choice)].label.trim();
-        }
         while (!answer && !signal?.aborted) {
-          const input = await ctx.ui.input(title, undefined, { signal });
-          if (signal?.aborted || input === undefined) break;
-          answer = input.trim();
+          if (choices.length) {
+            const choice = await ctx.ui.select(title, [...choices, other], { signal });
+            if (signal?.aborted || choice === undefined) break;
+            if (choice !== other) {
+              answer = options![choices.indexOf(choice)].label.trim();
+              break;
+            }
+          }
+          while (!answer && !signal?.aborted) {
+            const input = await ctx.ui.input(title, undefined, { signal });
+            if (signal?.aborted || input === undefined) break;
+            answer = input.trim();
+          }
+          if (!choices.length) break;
         }
         if (!answer || signal?.aborted) break;
         answers.push({ id, answer });

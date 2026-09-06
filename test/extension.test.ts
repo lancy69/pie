@@ -6,6 +6,8 @@ import { Value } from "typebox/value";
 import extension from "../src/index.ts";
 
 type Question = { id: string; question: string; options?: { label: string; description?: string }[] };
+const other = "Other Type your own answer";
+const styledOther = "Other\u001b[90m Type your own answer\u001b[39m";
 const name: Question = { id: "name", question: "Your name?" };
 const pick: Question = { id: "pick", question: "Pick one", options: [{ label: " A " }, { label: "B" }] };
 
@@ -67,7 +69,7 @@ test("trims text and retries blanks with the same progress title", async () => {
 
 test("sequences choices, Other, and text with mapped IDs and progress", async () => {
   const controller = new AbortController();
-  const env = setup({ selections: ["B", "Other"], inputs: [" C ", "Ada"] });
+  const env = setup({ selections: ["B", other], inputs: [" C ", "Ada"] });
   const result = await env.run([pick, { ...pick, id: "custom" }, { ...name, options: [] }], controller.signal);
   assert.deepEqual(result.details, {
     answers: [{ id: "pick", answer: "B" }, { id: "custom", answer: "C" }, { id: "name", answer: "Ada" }],
@@ -76,7 +78,7 @@ test("sequences choices, Other, and text with mapped IDs and progress", async ()
   assert.deepEqual(env.calls.map(({ kind, title }) => [kind, title]), [
     ["select", "1/3: Pick one"], ["select", "2/3: Pick one"], ["input", "2/3: Pick one"], ["input", "3/3: Your name?"],
   ]);
-  assert.deepEqual(env.calls[0].options, ["A", "B", "Other"]);
+  assert.deepEqual(env.calls[0].options, ["A", "B", styledOther]);
   assert.ok(env.calls.every(call => call.signal === controller.signal));
 });
 
@@ -97,12 +99,12 @@ test("validates every question before prompting", async () => {
 });
 
 test("Escape preserves completed answers and stops the questionnaire", async () => {
-  for (const selections of [[undefined], ["Other"]]) {
+  for (const selections of [[undefined], [other, undefined]]) {
     const env = setup({ inputs: ["Ada", undefined], selections });
     assert.deepEqual((await env.run([name, pick, { ...name, id: "later" }])).details, {
       answers: [{ id: "name", answer: "Ada" }], cancelled: true,
     });
-    assert.equal(env.calls.length, selections[0] === "Other" ? 3 : 2);
+    assert.equal(env.calls.length, selections[0] === other ? 4 : 2);
   }
   assert.deepEqual((await setup().run()).details, { answers: [], cancelled: true });
 });
@@ -133,7 +135,7 @@ test("displays optional descriptions but returns only the selected label", async
   ] };
   for (const [selection, answer] of [
     ["TypeScript Static types — editor support", "TypeScript"],
-    ["JavaScript", "JavaScript"], ["Other language", "Other language"], ["Other", "Rust"],
+    ["JavaScript", "JavaScript"], ["Other language", "Other language"], [other, "Rust"],
   ]) {
     const env = setup({ selections: [selection], inputs: ["Rust"] });
     assert.equal(Value.Check(env.tool.parameters, { questions: [described] }), true);
@@ -141,9 +143,9 @@ test("displays optional descriptions but returns only the selected label", async
       answers: [{ id: "pick", answer }], cancelled: false,
     });
     assert.deepEqual(env.calls[0].options, [
-      "TypeScript\u001b[90m Static types — editor support\u001b[39m", "JavaScript", "Other language", "Other",
+      "TypeScript\u001b[90m Static types — editor support\u001b[39m", "JavaScript", "Other language", styledOther,
     ]);
-    assert.equal(env.calls.length, selection === "Other" ? 2 : 1);
+    assert.equal(env.calls.length, selection === other ? 2 : 1);
   }
 });
 
@@ -151,9 +153,37 @@ test("rejects duplicate labels and ambiguous display text before prompting", asy
   for (const options of [
     [{ label: "A", description: "first" }, { label: "A", description: "second" }],
     [{ label: "A", description: "B" }, { label: "A B" }],
+    [{ label: "Other Type", description: "your own answer" }],
   ]) {
     const env = setup();
     await assert.rejects(env.run([name, { ...pick, options }]), /Options must/);
     assert.equal(env.calls.length, 0);
   }
+});
+
+
+test("Escape from custom input returns to the same question and allows another choice", async () => {
+  for (const [selections, inputs, answer, kinds] of [
+    [[other, "B"], [undefined], "B", ["select", "input", "select"]],
+    [[other, other], [undefined, " ", " custom "], "custom", ["select", "input", "select", "input", "input"]],
+  ] as const) {
+    const env = setup({ selections: [...selections], inputs: ["Ada", ...inputs] });
+    const result = await env.run([name, pick]);
+    assert.deepEqual(result.details, {
+      answers: [{ id: "name", answer: "Ada" }, { id: "pick", answer }], cancelled: false,
+    });
+    assert.deepEqual(env.calls.slice(1).map(call => call.kind), kinds);
+    assert.ok(env.calls.slice(1).every(call => call.title === "2/2: Pick one"));
+  }
+});
+
+test("aborting custom input never returns to the menu", async () => {
+  const controller = new AbortController();
+  let dialogs = 0;
+  const env = setup({ selections: [other], inputs: ["Ada", undefined],
+    onDialog: () => { if (++dialogs === 3) controller.abort(); } });
+  assert.deepEqual((await env.run([name, pick], controller.signal)).details, {
+    answers: [{ id: "name", answer: "Ada" }], cancelled: true,
+  });
+  assert.deepEqual(env.calls.map(call => call.kind), ["input", "select", "input"]);
 });

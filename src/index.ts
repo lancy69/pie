@@ -2,7 +2,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
 function formatChoice(option: { label: string; description?: string }): string {
-  return [option.label.trim(), option.description?.trim()].filter(Boolean).join(" — ");
+  return [option.label.trim(), option.description?.trim()].filter(Boolean).join(" ");
 }
 
 export default function questions(pi: ExtensionAPI) {
@@ -45,7 +45,7 @@ export default function questions(pi: ExtensionAPI) {
         if (signal?.aborted) break;
         const title = `${index + 1}/${questions.length}: ${question}`;
         const choices = options?.map(({ label, description }) => label.trim() +
-          (description?.trim() ? ctx.ui.theme.fg("dim", ` — ${description.trim()}`) : "")) ?? [];
+          (description?.trim() ? ctx.ui.theme.fg("dim", ` ${description.trim()}`) : "")) ?? [];
         let answer: string | undefined;
         if (choices.length) {
           const choice = await ctx.ui.select(title, [...choices, "Other"], { signal });

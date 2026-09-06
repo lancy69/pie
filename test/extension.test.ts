@@ -132,7 +132,7 @@ test("displays optional descriptions but returns only the selected label", async
     { label: "Other language", description: "   " },
   ] };
   for (const [selection, answer] of [
-    ["TypeScript — Static types — editor support", "TypeScript"],
+    ["TypeScript Static types — editor support", "TypeScript"],
     ["JavaScript", "JavaScript"], ["Other language", "Other language"], ["Other", "Rust"],
   ]) {
     const env = setup({ selections: [selection], inputs: ["Rust"] });
@@ -141,7 +141,7 @@ test("displays optional descriptions but returns only the selected label", async
       answers: [{ id: "pick", answer }], cancelled: false,
     });
     assert.deepEqual(env.calls[0].options, [
-      "TypeScript\u001b[90m — Static types — editor support\u001b[39m", "JavaScript", "Other language", "Other",
+      "TypeScript\u001b[90m Static types — editor support\u001b[39m", "JavaScript", "Other language", "Other",
     ]);
     assert.equal(env.calls.length, selection === "Other" ? 2 : 1);
   }
@@ -150,7 +150,7 @@ test("displays optional descriptions but returns only the selected label", async
 test("rejects duplicate labels and ambiguous display text before prompting", async () => {
   for (const options of [
     [{ label: "A", description: "first" }, { label: "A", description: "second" }],
-    [{ label: "A", description: "B" }, { label: "A — B" }],
+    [{ label: "A", description: "B" }, { label: "A B" }],
   ]) {
     const env = setup();
     await assert.rejects(env.run([name, { ...pick, options }]), /Options must/);

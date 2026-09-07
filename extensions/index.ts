@@ -1,8 +1,8 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { isKeyRelease, matchesKey } from "@earendil-works/pi-tui";
 
-/** Time window for a double-Esc press, matching pi's built-in double-escape interval. */
-const DOUBLE_ESC_WINDOW_MS = 500;
+/** Time window for a double-Esc press (deliberately more forgiving than pi's built-in 500ms double-escape interval). */
+const DOUBLE_ESC_WINDOW_MS = 1000;
 const HINT_MESSAGE = "Press Esc again to interrupt";
 
 type InputResult = { consume: true } | undefined;

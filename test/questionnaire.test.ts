@@ -35,7 +35,7 @@ function setup(questions = [text, choice], signal?: AbortSignal, onRender?: () =
         mounts++;
         return new Promise(resolve => {
           component = factory({ requestRender: () => { renders++; onRender?.(); } } as unknown as TUI,
-            { fg: (color: string, value: string) => color === "dim" ? `\u001b[90m${value}\u001b[39m` : value } as Theme,
+            { fg: (color: string, value: string) => color === "dim" ? `\u001b[90m${value}\u001b[39m` : color === "border" ? `\u001b[34m${value}\u001b[39m` : value } as Theme,
             getKeybindings() as KeybindingsManager,
             value => { completions++; resolve(value); }) as typeof component;
         });
@@ -185,7 +185,10 @@ test("abort during initial rendering closes the mounted session without acceptin
 test("Tab cycles questions, preserves drafts, and keeps the counter at the right edge", async () => {
   const env = setup([text, choice, { ...text, id: "last" }]);
   const mounted = env.component;
-  assert.equal(env.screen().split("\n")[0], "1 / 3".padStart(80));
+  assert.equal(env.screen().split("\n")[2], " " + "1 / 3".padStart(78) + " ");
+  assert.ok(env.component.render(80)[2].startsWith("\u001b[34m"));
+  assert.match(env.screen().split("\n")[0], /^─+$/);
+  assert.match(env.screen().split("\n").at(-1)!, /^─+$/);
   env.press("draft", "\t");
   assert.match(env.screen(), /2 \/ 3/);
   assert.match(env.screen(), /Pick one/);
@@ -197,11 +200,37 @@ test("Tab cycles questions, preserves drafts, and keeps the counter at the right
   assert.match(env.screen(), /custom draft/);
   assert.match(env.screen(), /return to selection menu/);
   for (const width of [3, 30, 100]) {
-    assert.equal(env.screen(width).split("\n")[0].length, width);
+    assert.equal(env.screen(width).split("\n")[2].length, width);
   }
   assert.equal(env.component, mounted);
   assert.equal(env.mounts, 1);
   env.press(escape, escape);
   assert.deepEqual((await env.result).details, { answers: [], cancelled: true });
+  env.component.dispose();
+});
+
+
+test("navigation stays inside input, choice, custom input, and submission frames", async () => {
+  const env = setup();
+  function check(hints: RegExp) {
+    const lines = env.screen().split("\n");
+    assert.match(lines[0], /^─+$/);
+    assert.match(lines.at(-1)!, /^─+$/);
+    const footer = lines.find(line => line.includes("tab cycle"));
+    assert.ok(footer);
+    assert.match(footer, hints);
+    assert.ok(footer.startsWith(" "));
+    assert.match(lines[2], /[12] \/ 2 $/);
+    assert.ok(env.component.render(80)[2].startsWith("\u001b[34m"));
+  }
+  check(/enter submit.*cancel.*tab cycle/);
+  env.press(enter);
+  check(/navigate.*enter select.*cancel.*tab cycle/);
+  env.press(down, down, enter);
+  check(/enter submit.*return to selection menu.*tab cycle/);
+  env.press(enter);
+  check(/enter select.*cancel.*tab cycle/);
+  env.press(enter);
+  await env.result;
   env.component.dispose();
 });

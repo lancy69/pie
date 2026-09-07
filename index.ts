@@ -3,9 +3,18 @@ import { isKeyRelease, matchesKey } from "@earendil-works/pi-tui";
 
 /** Time window for a double-Esc press, matching pi's built-in double-escape interval. */
 const DOUBLE_ESC_WINDOW_MS = 500;
+const STATUS_KEY = "double-esc";
 
 export default function (pi: ExtensionAPI) {
   let lastEscAt = 0;
+  let hintTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function clearHintTimer() {
+    if (hintTimer !== undefined) {
+      clearTimeout(hintTimer);
+      hintTimer = undefined;
+    }
+  }
 
   pi.on("session_start", (_event, ctx) => {
     if (ctx.mode !== "tui") return;
@@ -30,16 +39,27 @@ export default function (pi: ExtensionAPI) {
         // Second press within the window: pass through so pi's built-in
         // abort handles it exactly as it would without this extension.
         lastEscAt = 0;
+        clearHintTimer();
+        ctx.ui.setStatus(STATUS_KEY, undefined);
         return undefined;
       }
 
-      // First press while busy: swallow it.
+      // First press while busy: swallow it and show the hint.
       lastEscAt = now;
+      ctx.ui.setStatus(STATUS_KEY, "Press Esc again to interrupt");
+      clearHintTimer();
+      hintTimer = setTimeout(() => {
+        hintTimer = undefined;
+        ctx.ui.setStatus(STATUS_KEY, undefined);
+      }, DOUBLE_ESC_WINDOW_MS);
       return { consume: true };
     });
   });
 
   pi.on("session_shutdown", () => {
+    // Clear the timer so it never fires against a stale ctx after pi
+    // tears down this session's extension runtime.
     lastEscAt = 0;
+    clearHintTimer();
   });
 }

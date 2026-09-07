@@ -26,8 +26,7 @@ export default function questions(pi: ExtensionAPI) {
       const prepared = prepareQuestions(questions);
       if (!ctx.hasUI) throw new Error("ask_questions requires an interactive UI.");
       const ask = ctx.mode === "tui" ? askQuestionnaire : askDialogs;
-      const answers = await ask(ctx, prepared, signal);
-      const details = { answers, cancelled: answers.length !== prepared.length };
+      const details = await ask(ctx, prepared, signal);
       return { content: [{ type: "text", text: JSON.stringify(details) }], details };
     },
   });

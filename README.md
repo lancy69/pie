@@ -1,6 +1,6 @@
 # pi-questions
 
-A small Pi extension that provides `ask_questions` using Pi's native selection and text-input components. Questions appear one at a time with progress labels inside one persistent terminal UI session, without restoring the normal editor between questions.
+A small Pi extension that provides `ask_questions` using Pi's native selection and text-input components. Multiple questions open a question menu inside one persistent terminal UI session. Answer in any order, reopen questions to edit, then select **Submit answers**. A single question opens directly.
 
 ## Install
 
@@ -49,6 +49,7 @@ Ask Pi to use `ask_questions` when you want it to collect choices or written ans
 ```
 
 - Provide at least one question, with unique nonblank IDs and nonblank question text.
+- For multiple questions, the menu marks each question as answered or unanswered. **Submit answers** appears once every question has an answer; an empty answer counts. Saved answers are returned in the original question order.
 - Options are optional. Omitted or empty options open text input directly.
 - Choice questions allow one selection and automatically include **Other** with a dimmed **Type your own answer** hint, which opens text input.
 - Each option is an object with a `label` and optional `description` (replacing the earlier string format). Descriptions appear as `label description`, with the description in Pi's dim theme color; only the label is returned. Descriptions are trimmed, and blank descriptions are omitted.
@@ -71,13 +72,13 @@ The tool returns the same JSON in its text content and structured `details`:
 }
 ```
 
-Use the dialog's navigation keys and Enter to select or submit. Escape from an Other text input returns to the same question’s selection menu. Escape from the selection menu or a text-only question cancels the remaining questionnaire. Completed answers are preserved and `cancelled` is `true`; unanswered questions are absent from `answers`.
+Use the dialog's navigation keys and Enter to select or submit. Escape from an Other text input returns to the same question’s selection menu. Escape from the question menu, an answer selection menu, or a text-only question cancels the questionnaire—even if all questions have been answered but not submitted. Completed answers are preserved and `cancelled` is `true`; unanswered questions are absent from `answers`.
 
-In Pi's terminal UI, the Other input footer labels the configured Escape/cancel keys as **return to selection menu**. Returning keeps Other highlighted. Selection and input pages share the same mounted questionnaire; their heights can still differ. RPC clients retain their own sequential dialogs and footers.
+In Pi's terminal UI, the Other input footer labels the configured Escape/cancel keys as **return to selection menu**. Returning keeps Other highlighted. Reopened terminal input fields are prefilled with the saved answer. Selection and input pages share the same mounted questionnaire; their heights can still differ. RPC clients use their own dialogs and footers, with the same question menu and explicit submission flow.
 
 Execution aborts also stop further prompts and discard an unfinished answer. Pi controls delivery of an aborted tool result. Calls without an interactive UI fail with an explicit error.
 
-The extension uses Pi's default tool rendering. It has no navigation to earlier questions, embedded custom input, multi-select, or saved questionnaire state.
+The extension uses Pi's default tool rendering. It has no embedded custom input, multi-select, or questionnaire state saved between tool calls.
 
 ## Development
 

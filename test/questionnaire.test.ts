@@ -55,48 +55,50 @@ function setup(questions = [text, choice], signal?: AbortSignal, onRender?: () =
   };
 }
 
-test("mixed questions and custom input stay in one mounted session", async () => {
-  const env = setup([text, choice, { ...choice, id: "custom" }, { ...text, id: "last" }]);
+test("question menu supports arbitrary order and editing in one mounted session", async () => {
+  const env = setup([text, choice, { ...text, id: "last" }]);
   const mounted = env.component;
-  assert.match(env.screen(), /1\/4: Your name\?/);
-  assert.ok(env.component.render(80).join("\n").includes(CURSOR_MARKER));
-  env.press(" Ada ", enter);
-  assert.match(env.screen(), /2\/4: Pick one/);
-  assert.equal(env.completions, 0);
+  assert.match(env.screen(), /Questions \(0\/3 answered\)/);
+  assert.doesNotMatch(env.screen(), /Submit answers/);
+  env.press(down, enter);
+  assert.match(env.screen(), /2\/3: Pick one/);
   assert.ok(env.component.render(80).some(line => line.includes("\u001b[90m First choice")));
   env.press(down, enter);
-  assert.match(env.screen(), /3\/4: Pick one/);
-  env.press(down, down, enter);
-  assert.match(env.screen(), /return to selection menu/);
-  assert.ok(env.component.render(80).join("\n").includes(CURSOR_MARKER));
-  env.press(escape);
-  assert.match(env.screen(), /→ Other Type your own answer/);
-  assert.equal(env.completions, 0);
-  env.press(enter, " custom ", enter);
-  assert.match(env.screen(), /4\/4: Your name\?/);
-  assert.ok(env.component.render(80).join("\n").includes(CURSOR_MARKER));
+  assert.match(env.screen(), /✓ 2. Pick one/);
+  env.press(enter, " Ada ", enter);
+  assert.match(env.screen(), /Questions \(2\/3 answered\)/);
   env.press(enter);
+  assert.match(env.screen(), /Ada/);
+  assert.ok(env.component.render(80).join("\n").includes(CURSOR_MARKER));
+  env.press("\u000b", "Grace", enter);
+  env.press(down, down, enter, enter);
+  assert.match(env.screen(), /Questions \(3\/3 answered\)/);
+  assert.match(env.screen(), /Submit answers/);
+  assert.equal(env.completions, 0);
+  env.press(down, down, down, enter);
   const result = await env.result;
   assert.deepEqual(result.details, { answers: [
-    { id: "text", answer: "Ada" }, { id: "choice", answer: "B" },
-    { id: "custom", answer: "custom" }, { id: "last", answer: "" },
+    { id: "text", answer: "Grace" }, { id: "choice", answer: "B" }, { id: "last", answer: "" },
   ], cancelled: false });
   assert.deepEqual(result.content, [{ type: "text", text: JSON.stringify(result.details) }]);
   assert.equal(env.component, mounted);
   assert.equal(env.mounts, 1);
   assert.equal(env.completions, 1);
-  assert.ok(env.renders >= 6);
   env.press(enter, escape);
   assert.equal(env.completions, 1);
   env.component.dispose();
 });
 
-test("empty and whitespace input submits for both custom and text questions", async () => {
+test("custom answers return to choices and count empty submissions as answered", async () => {
   for (const input of ["", "   "]) {
     const env = setup([choice, text]);
-    env.press(down, down, enter, input, enter);
-    assert.match(env.screen(), /2\/2: Your name\?/);
-    env.press(input, enter);
+    env.press(enter, down, down, enter);
+    assert.match(env.screen(), /return to selection menu/);
+    env.press(escape);
+    assert.match(env.screen(), /→ Other Type your own answer/);
+    env.press(enter, input, enter);
+    assert.match(env.screen(), /✓ 1. Pick one/);
+    env.press(down, enter, input, enter, down, down, enter);
     assert.deepEqual((await env.result).details, {
       answers: [{ id: "choice", answer: "" }, { id: "text", answer: "" }], cancelled: false,
     });
@@ -104,17 +106,31 @@ test("empty and whitespace input submits for both custom and text questions", as
   }
 });
 
-test("cancel from selection or text preserves completed answers", async () => {
+test("Escape from a question or the menu cancels and preserves answers", async () => {
   for (const second of [choice, { ...text, id: "second" }]) {
     for (const cancel of [escape, "\u0003"]) {
       const env = setup([text, second]);
-      env.press("Ada", enter, cancel);
+      env.press(enter, "Ada", enter, down, enter, cancel);
       assert.deepEqual((await env.result).details, {
         answers: [{ id: "text", answer: "Ada" }], cancelled: true,
       });
       env.component.dispose();
     }
   }
+  const env = setup([text, { ...text, id: "second" }]);
+  env.press(enter, enter, down, enter, enter, escape);
+  assert.deepEqual((await env.result).details, {
+    answers: [{ id: "text", answer: "" }, { id: "second", answer: "" }], cancelled: true,
+  });
+  env.component.dispose();
+});
+
+test("single questions keep their direct flow and custom-answer Escape behavior", async () => {
+  const direct = setup([text]);
+  assert.match(direct.screen(), /1\/1: Your name/);
+  direct.press(enter);
+  assert.deepEqual((await direct.result).details, { answers: [{ id: "text", answer: "" }], cancelled: false });
+  direct.component.dispose();
   const env = setup([choice]);
   env.press(down, down, enter, escape, escape);
   assert.deepEqual((await env.result).details, { answers: [], cancelled: true });
@@ -126,8 +142,8 @@ test("abort closes once, preserves answers, and removes its listener", async () 
     const controller = new AbortController();
     const env = setup([text, choice], controller.signal);
     assert.equal(getEventListeners(controller.signal, "abort").length, 1);
-    env.press("Ada", enter);
-    if (custom) env.press(down, down, enter, "unfinished");
+    env.press(enter, "Ada", enter);
+    if (custom) env.press(down, enter, down, down, enter, "unfinished");
     controller.abort();
     env.press(enter);
     assert.deepEqual((await env.result).details, {
@@ -144,11 +160,10 @@ test("abort closes once, preserves answers, and removes its listener", async () 
   assert.equal(stopped.mounts, 0);
 });
 
-test("resize and focus continue working after changing pages", async () => {
+test("resize and focus continue working after menu transitions", async () => {
   const env = setup([text, choice]);
   env.component.focused = false;
-  assert.ok(!env.component.render(80).join("\n").includes(CURSOR_MARKER));
-  env.press(enter, down, down, enter);
+  env.press(down, enter, down, down, enter);
   assert.ok(!env.component.render(80).join("\n").includes(CURSOR_MARKER));
   env.component.focused = true;
   for (const width of [30, 100]) {
@@ -160,7 +175,6 @@ test("resize and focus continue working after changing pages", async () => {
   await env.result;
   env.component.dispose();
 });
-
 
 test("abort during initial rendering closes the mounted session without accepting input", async () => {
   const controller = new AbortController();

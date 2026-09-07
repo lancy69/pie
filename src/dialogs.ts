@@ -1,16 +1,35 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { displayChoice, otherOption, type Answer, type Question } from "./questions.ts";
+import { displayChoice, otherOption, type Question } from "./questions.ts";
+
+import { collectAnswers, menuTitle, questionMenu, type QuestionnaireResult } from "./question-menu.ts";
 
 // RPC clients own their dialogs; keep their sequential UI requests.
-export async function askDialogs(ctx: ExtensionContext, questions: Question[], signal?: AbortSignal): Promise<Answer[]> {
-  const answers: Answer[] = [];
-  for (const [index, question] of questions.entries()) {
-    const title = `${index + 1}/${questions.length}: ${question.question}`;
-    const answer = await askDialog(ctx, question, title, signal);
-    if (answer === undefined) break;
-    answers.push({ id: question.id, answer });
-  }
-  return answers;
+export async function askDialogs(ctx: ExtensionContext, questions: Question[], signal?: AbortSignal): Promise<QuestionnaireResult> {
+  if (questions.length === 1) return askSingle(ctx, questions[0], signal);
+  const answers = new Map<number, string>();
+  let outcome;
+  do {
+    outcome = await answerFromMenu(ctx, questions, answers, signal);
+  } while (outcome === undefined);
+  return { answers: collectAnswers(questions, answers), cancelled: outcome === "cancelled" };
+}
+
+async function answerFromMenu(ctx: ExtensionContext, questions: Question[], answers: Map<number, string>,
+  signal?: AbortSignal): Promise<"submitted" | "cancelled" | undefined> {
+  const items = questionMenu(questions, answers);
+  const selected = await prompt(signal, () => ctx.ui.select(menuTitle(questions, answers), items, { signal }));
+  if (selected === undefined) return "cancelled";
+  const index = items.indexOf(selected);
+  if (index === questions.length) return "submitted";
+  const answer = await askDialog(ctx, questions[index], `${index + 1}/${questions.length}: ${questions[index].question}`, signal);
+  if (answer === undefined) return "cancelled";
+  answers.set(index, answer);
+}
+
+async function askSingle(ctx: ExtensionContext, question: Question, signal?: AbortSignal): Promise<QuestionnaireResult> {
+  const answer = await askDialog(ctx, question, `1/1: ${question.question}`, signal);
+  if (answer === undefined) return { answers: [], cancelled: true };
+  return { answers: [{ id: question.id, answer }], cancelled: false };
 }
 
 async function prompt(signal: AbortSignal | undefined, action: () => Promise<string | undefined>) {

@@ -11,17 +11,19 @@ const styledOther = "Other\u001b[90m Type your own answer\u001b[39m";
 const name: Question = { id: "name", question: "Your name?" };
 const pick: Question = { id: "pick", question: "Pick one", options: [{ label: " A " }, { label: "B" }] };
 
-function setup({ inputs = [], selections = [], hasUI = true, onDialog }: {
+function setup({ inputs = [], selections = [], hasUI = true, onDialog, questionSelections }: {
   inputs?: (string | undefined)[];
   selections?: (string | undefined)[];
   hasUI?: boolean;
   onDialog?: () => void;
+  questionSelections?: (number | "submit" | undefined)[];
 } = {}) {
   inputs = [...inputs];
   selections = [...selections];
   let tool!: ToolDefinition;
   extension({ registerTool: (value: ToolDefinition) => { tool = value; } } as ExtensionAPI);
   const calls: { kind: string; title: string; options?: string[]; signal?: AbortSignal }[] = [];
+  const menuCalls: string[][] = [];
   const ctx = {
     mode: "rpc",
     hasUI,
@@ -31,6 +33,13 @@ function setup({ inputs = [], selections = [], hasUI = true, onDialog }: {
         return `\u001b[90m${text}\u001b[39m`;
       } },
       async select(title: string, options: string[], opts?: { signal?: AbortSignal }) {
+        if (title.startsWith("Questions (")) {
+          menuCalls.push(options);
+          if (!questionSelections) return options.find(option => option.startsWith("○")) ?? "Submit answers";
+          const index = questionSelections.shift();
+          if (index === undefined) return undefined;
+          return index === "submit" ? options.at(-1) : options[index];
+        }
         calls.push({ kind: "select", title, options, signal: opts?.signal });
         onDialog?.();
         const selected = selections.shift();
@@ -43,7 +52,7 @@ function setup({ inputs = [], selections = [], hasUI = true, onDialog }: {
       },
     },
   } as unknown as ExtensionContext;
-  return { tool, calls, run: (questions: Question[] = [name], signal?: AbortSignal) =>
+  return { tool, calls, menuCalls, run: (questions: Question[] = [name], signal?: AbortSignal) =>
     tool.execute("test", { questions }, signal, undefined, ctx) };
 }
 
@@ -219,4 +228,25 @@ test("text-only questions accept empty answers with omitted or empty options", a
       assert.deepEqual(env.calls.map(call => call.kind), ["input", "input"]);
     }
   }
+});
+
+
+test("RPC question menu supports out-of-order answers, editing, and explicit submission", async () => {
+  const env = setup({ questionSelections: [1, 0, 0, "submit"], selections: ["B"], inputs: ["Ada", "Grace"] });
+  assert.deepEqual((await env.run([name, pick])).details, {
+    answers: [{ id: "name", answer: "Grace" }, { id: "pick", answer: "B" }], cancelled: false,
+  });
+  assert.deepEqual(env.menuCalls, [
+    ["○ 1. Your name?", "○ 2. Pick one"],
+    ["○ 1. Your name?", "✓ 2. Pick one"],
+    ["✓ 1. Your name?", "✓ 2. Pick one", "Submit answers"],
+    ["✓ 1. Your name?", "✓ 2. Pick one", "Submit answers"],
+  ]);
+});
+
+test("RPC menu cancellation remains cancellation even when every question is answered", async () => {
+  const env = setup({ questionSelections: [0, 1, undefined], selections: ["B"], inputs: [""] });
+  assert.deepEqual((await env.run([name, pick])).details, {
+    answers: [{ id: "name", answer: "" }, { id: "pick", answer: "B" }], cancelled: true,
+  });
 });

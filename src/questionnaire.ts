@@ -4,25 +4,30 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Container, Input, Spacer, Text, type Component, type Focusable } from "@earendil-works/pi-tui";
 
-import { displayChoice, otherOption, type Answer, type Question } from "./questions.ts";
+import { displayChoice, otherOption, type Question } from "./questions.ts";
+
+import { collectAnswers, menuTitle, questionMenu, type QuestionnaireResult } from "./question-menu.ts";
 
 type Page = Component & Partial<Focusable> & { dispose?(): void };
 
-export async function askQuestionnaire(ctx: ExtensionContext, questions: Question[], signal?: AbortSignal): Promise<Answer[]> {
-  const answers: Answer[] = [];
-  if (signal?.aborted) return answers;
+export async function askQuestionnaire(ctx: ExtensionContext, questions: Question[], signal?: AbortSignal): Promise<QuestionnaireResult> {
+  const answers = new Map<number, string>();
+  if (signal?.aborted) return { answers: [], cancelled: true };
 
-  return ctx.ui.custom<Answer[]>((tui, theme, keybindings, done) => {
+  return ctx.ui.custom<QuestionnaireResult>((tui, theme, keybindings, done) => {
+    let index = 0;
+    const single = questions.length === 1;
     let page: Page;
     let focused = false;
     let finished = false;
 
-    function finish() {
+    function finish(cancelled: boolean) {
       if (finished) return;
       finished = true;
-      signal?.removeEventListener("abort", finish);
-      done(answers);
+      signal?.removeEventListener("abort", cancel);
+      done({ answers: collectAnswers(questions, answers), cancelled });
     }
+    const cancel = () => finish(true);
     function show(next: Page) {
       if (page && "focused" in page) page.focused = false;
       page = next;
@@ -30,30 +35,42 @@ export async function askQuestionnaire(ctx: ExtensionContext, questions: Questio
       tui.requestRender();
     }
     function submit(answer: string) {
-      answers.push({ id: questions[answers.length].id, answer: answer.trim() });
-      if (answers.length === questions.length) finish();
-      else showQuestion();
+      answers.set(index, answer.trim());
+      if (single) finish(false);
+      else showMenu();
+    }
+    function showMenu() {
+      const items = questionMenu(questions, answers);
+      show(new ExtensionSelectorComponent(menuTitle(questions, answers), items, selected => {
+        index = items.indexOf(selected);
+        if (index === questions.length) finish(false);
+        else showQuestion();
+      }, cancel));
     }
     function showQuestion() {
-      const { question, options } = questions[answers.length];
-      const title = `${answers.length + 1}/${questions.length}: ${question}`;
+      const { question, options } = questions[index];
+      const title = `${index + 1}/${questions.length}: ${question}`;
       if (!options.length) {
-        show(createInput(title, "cancel", theme, keybindings, submit, finish));
+        show(createInput(title, "cancel", theme, keybindings, submit, cancel, answers.get(index)));
         return;
       }
       const choices = options.map(option => displayChoice(option, theme));
       const other = displayChoice(otherOption, theme);
       const selector = new ExtensionSelectorComponent(title, [...choices, other], choice => {
         if (choice === other) {
-          show(createInput(title, "return to selection menu", theme, keybindings, submit, () => show(selector)));
+          show(createInput(title, "return to selection menu", theme, keybindings, submit, () => show(selector), answers.get(index)));
         } else submit(options[choices.indexOf(choice)].label);
-      }, finish);
+      }, cancel);
       show(selector);
     }
 
-    showQuestion();
-    signal?.addEventListener("abort", finish, { once: true });
-    if (signal?.aborted) finish();
+    function start() {
+      if (single) showQuestion();
+      else showMenu();
+    }
+    start();
+    signal?.addEventListener("abort", cancel, { once: true });
+    if (signal?.aborted) cancel();
     return {
       get focused() { return focused; },
       set focused(value: boolean) {
@@ -67,7 +84,7 @@ export async function askQuestionnaire(ctx: ExtensionContext, questions: Questio
       },
       dispose() {
         finished = true;
-        signal?.removeEventListener("abort", finish);
+        signal?.removeEventListener("abort", cancel);
         page.dispose?.();
       },
     };
@@ -75,8 +92,9 @@ export async function askQuestionnaire(ctx: ExtensionContext, questions: Questio
 }
 
 function createInput(title: string, cancelLabel: string, theme: Theme, keybindings: KeybindingsManager,
-  submit: (value: string) => void, cancel: () => void): Page {
+  submit: (value: string) => void, cancel: () => void, initial = ""): Page {
   const input = new Input();
+  input.setValue(initial);
   const container = new Container();
   container.addChild(new DynamicBorder());
   container.addChild(new Spacer(1));

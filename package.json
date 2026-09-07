@@ -1,9 +1,14 @@
 {
   "name": "pi-double-esc",
   "version": "0.1.0",
-  "description": "Require double-Esc (within 500ms) to interrupt running tasks in pi",
+  "description": "Require double-Esc to interrupt running tasks in Pi",
   "type": "module",
+  "keywords": [
+    "pi-package"
+  ],
   "pi": {
-    "extensions": ["./index.ts"]
+    "extensions": [
+      "./index.ts"
+    ]
   }
 }

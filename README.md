@@ -1,0 +1,9 @@
+<div align="center">
+
+# Lancy's Pie
+
+Vanilla [`pi`](https://github.com/earendil-works/pi) feels not enough, but [`omp`](https://github.com/can1357/oh-my-pi) is a bit too much,
+
+and so I have made Pi-Extended, a delight in between -- just intended.
+
+</div>

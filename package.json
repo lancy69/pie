@@ -1,0 +1,15 @@
+{
+  "name": "@lancy69/pie",
+  "description": "A curated package for the Pi Coding Agent.",
+  "author": "Lancy <lancy69@github.com>",
+  "version": "0.1.0",
+  "license": "MIT",
+  "keywords": [
+    "pi-package"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions"
+    ]
+  }
+}

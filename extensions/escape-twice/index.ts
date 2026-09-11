@@ -1,5 +1,5 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { isKeyRelease, matchesKey } from "@earendil-works/pi-tui";
+import { CustomEditor, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { isKeyRelease, isKeyRepeat, matchesKey } from "@earendil-works/pi-tui";
 
 /** Time window for a double-Esc press (deliberately more forgiving than pi's built-in 500ms double-escape interval). */
 const DOUBLE_ESC_WINDOW_MS = 1000;
@@ -28,9 +28,7 @@ export default function (pi: ExtensionAPI) {
     restoreWorkingMessage(ctx);
   }
 
-  // pi enables the Kitty keyboard protocol with event types, so input
-  // listeners see key releases that components never do. Ignore them,
-  // or one physical Esc press would look like two.
+  // Only actual Esc presses can open or confirm the interruption window.
   function isEscPress(data: string): boolean {
     return !isKeyRelease(data) && matchesKey(data, "escape");
   }
@@ -72,8 +70,9 @@ export default function (pi: ExtensionAPI) {
     return handleBusyEsc(ctx);
   }
 
-  function handleTerminalInput(data: string, ctx: ExtensionContext): InputResult {
+  function handleEditorInput(data: string, ctx: ExtensionContext): InputResult {
     if (!isEscPress(data)) return undefined;
+    if (!ctx.isIdle() && isKeyRepeat(data)) return { consume: true };
     return handleEscPress(ctx);
   }
 
@@ -84,10 +83,20 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_start", (_event, ctx) => {
     if (ctx.mode !== "tui") return;
-    ctx.ui.onTerminalInput((data) => handleTerminalInput(data, ctx));
+    ctx.ui.setEditorComponent((tui, theme, keybindings) => {
+      class EscapeTwiceEditor extends CustomEditor {
+        override handleInput(data: string): void {
+          // Dialogs receive their own input; autocomplete keeps single-Esc cancellation.
+          if (!this.isShowingAutocomplete() && handleEditorInput(data, ctx)?.consume) return;
+          super.handleInput(data);
+        }
+      }
+      return new EscapeTwiceEditor(tui, theme, keybindings);
+    });
   });
 
   pi.on("agent_settled", (_event, ctx) => {
+    lastEscAt = 0;
     // If a run settles while the hint is armed, restore the default working
     // message so the hint can't leak into the next run's indicator. Only
     // touch the working message when our hint set it.

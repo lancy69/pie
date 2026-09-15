@@ -7,3 +7,7 @@ Vanilla [`pi`](https://github.com/earendil-works/pi) feels not enough, but [`omp
 and so I have made Pi-Extended, a delight in between -- just intended.
 
 </div>
+
+## Extensions
+
+- `pi-double-esc`: Escape twice to interrupt.

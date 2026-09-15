@@ -10,4 +10,6 @@ and so I have made Pi-Extended, a delight in between -- just intended.
 
 ## Extensions
 
-- `pi-double-esc`: Escape twice to interrupt.
+- `pi-double-esc`: <Esc> twice to interrupt.
+
+- `pi-notify`: stolen right from official examples, currently the cleanest way.

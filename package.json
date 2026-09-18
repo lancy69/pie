@@ -2,7 +2,7 @@
   "name": "@lancy69/pie",
   "description": "A curated package for the Pi Coding Agent.",
   "author": "Lancy <lancy69@github.com>",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "keywords": [
     "pi-package"

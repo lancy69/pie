@@ -1,9 +1,12 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
+import { getDeepSeekBalance } from "./providers/deepseek.ts"
 import { getCodexBalance } from "./providers/openai-codex.ts"
 
 async function getBalance(ctx: ExtensionContext): Promise<string> {
 	switch (ctx.model?.provider) {
+		case "deepseek":
+			return getDeepSeekBalance(ctx)
 		case "openai-codex":
 			return getCodexBalance(ctx);
 		default:

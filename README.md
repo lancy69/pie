@@ -10,6 +10,8 @@ and so I have made Pi-Extended, a delight in between -- just intended.
 
 ## Extensions
 
-- `pi-double-esc`: <Esc> twice to interrupt.
+- `pi-double-esc` <Esc> twice to interrupt.
 
-- `pi-notify`: stolen right from official examples, currently the cleanest way.
+- `pi-notify` stolen right from official examples, currently the cleanest way.
+
+- `pi-balance` shows your API balance or plan usage.
